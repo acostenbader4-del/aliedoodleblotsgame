@@ -952,9 +952,8 @@ function executeItem(pid, itemIdx, targetId, coinResult) {
   checkWin();
 }
 
-// ─── END TURN / STATUS TICK ───────────────────────────────────────────────────
+// ─── END TURN / STATUS TICK ─────────────────────────────────────────────────
 function endTurn() {
-  // Tick statuses for the player whose turn just ended
   const pid = state.turn;
   state.players[pid].blots.forEach(blot => {
     if (blot.defeated) return;
@@ -964,15 +963,93 @@ function endTurn() {
       }
     });
     blot.statuses = blot.statuses.map(s => ({ ...s, turns: s.turns - 1 })).filter(s => s.turns > 0);
-    // Clear last ability so they can use it again next time it's their turn
     blot.lastAbility = null;
   });
 
   state.turn = 1 - state.turn;
-  if (state.turn === 0) state.turnNumber++;
+  if (state.turn === 0) {
+    state.turnNumber++;
+    // Every 6 full rounds, offer both players a new item card if they have room
+    if (state.turnNumber > 1 && (state.turnNumber - 1) % 6 === 0) {
+      checkDefeated();
+      renderGame();
+      checkWin();
+      offerItemDraw();
+      return;
+    }
+  }
   checkDefeated();
   renderGame();
   checkWin();
+}
+
+// ─── ITEM DRAW OFFER ─────────────────────────────────────────────────────────
+function offerItemDraw() {
+  const eligible = state.players
+    .map((p, i) => ({ p, i }))
+    .filter(({ p }) => p.items.filter(x => !x.used).length < 3);
+
+  if (!eligible.length) {
+    addLog('🎒 Item draw round — both players already have full hands!', 'item');
+    return;
+  }
+  processNextItemDraw(eligible, 0);
+}
+
+function processNextItemDraw(eligible, idx) {
+  if (idx >= eligible.length) return;
+  const { p, i: pid } = eligible[idx];
+  const unusedCount = p.items.filter(x => !x.used).length;
+
+  if (unusedCount >= 3) {
+    addLog(`🎒 ${p.name} already has a full hand — skipping.`, 'item');
+    processNextItemDraw(eligible, idx + 1);
+    return;
+  }
+
+  const allItems = window.ITEM_DATA;
+  const overlay = document.getElementById('modal-overlay');
+  const modal = document.getElementById('modal');
+
+  let itemBtns = '';
+  allItems.forEach((item, ii) => {
+    const typeClass = ITEM_TYPE_COLORS[item.type] || 'tag-chaos';
+    itemBtns += `<button class="target-btn" style="flex-direction:column;align-items:flex-start;gap:4px"
+      onclick="giveItemCard(${pid},${ii},${idx})">
+      <div style="display:flex;align-items:center;gap:8px;width:100%">
+        <span class="target-btn-name">${item.name}</span>
+        <span class="item-tag ${typeClass}">${item.type}</span>
+      </div>
+      <span style="font-size:11px;color:var(--muted)">${item.desc}</span>
+    </button>`;
+  });
+
+  modal.innerHTML = `
+    <h3>🎒 Item Draw!</h3>
+    <p class="modal-desc" style="margin-bottom:14px">
+      <b>${p.name}</b>, pick a new item card!<br>
+      <span style="color:var(--muted);font-size:12px">${unusedCount}/3 cards currently held</span>
+    </p>
+    <div class="modal-label">CHOOSE AN ITEM</div>
+    <div class="target-list" style="max-height:340px;overflow-y:auto">${itemBtns}</div>`;
+  overlay.classList.add('open');
+}
+
+function giveItemCard(pid, itemIdx, queueIdx) {
+  closeModal();
+  const player = state.players[pid];
+  const item = window.ITEM_DATA[itemIdx];
+  const activeCount = player.items.filter(x => !x.used).length;
+  if (activeCount < 3) {
+    player.items.push({ ...item, used: false });
+    addLog(`🎒 <b>${player.name}</b> drew a new item: <span class="log-item">${item.name}</span>`, 'item');
+  }
+  renderGame();
+  // Check remaining eligible players
+  const stillEligible = state.players
+    .map((p, i) => ({ p, i }))
+    .filter(({ p }) => p.items.filter(x => !x.used).length < 3);
+  processNextItemDraw(stillEligible, queueIdx + 1);
 }
 
 // ─── WIN CHECK ───────────────────────────────────────────────────────────────
