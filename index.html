@@ -698,7 +698,15 @@ function openAbilityModal(pid, blotId, abilityName) {
 
 function needsTarget(e) {
   if (!e) return false;
-  if (e.allTargets || e.allEnemies || e.allAllies || e.skipTurn || e.statusClear === 'self') return false;
+  // these all resolve automatically — no target picker needed
+  if (e.allTargets || e.allEnemies || e.allAllies || e.allActive) return false;
+  if (e.randomDamage) return false;   // picks a random enemy automatically
+  if (e.skipTurn) return false;
+  if (e.healSelf) return false;
+  if (e.healAll) return false;
+  if (e.statusClear) return false;
+  if (e.negate) return false;
+  if (e.selfDamage && !e.damage) return false;
   return true;
 }
 
@@ -756,10 +764,13 @@ function executeAbility(pid, blotId, abilityName, targetId, coinResult) {
   if (e.damage > 0) {
     targets.forEach(t => dealDamage(t, e.damage, abilityName));
   }
-  // Random target damage
+  // Random target damage — always picks from active enemies only, never allies
   if (e.randomDamage > 0) {
-    const all = [...player.blots, ...enemy.blots].filter(b => b.active && !b.defeated);
-    if (all.length) dealDamage(all[Math.floor(Math.random() * all.length)], e.randomDamage, abilityName + ' (random)');
+    const randPool = enemy.blots.filter(b => b.active && !b.defeated);
+    if (randPool.length) {
+      const picked = randPool[Math.floor(Math.random() * randPool.length)];
+      dealDamage(picked, e.randomDamage, abilityName + ' → ' + picked.name);
+    }
   }
   // Self damage
   if (e.selfDamage > 0) dealDamage(blot, e.selfDamage, abilityName + ' (self)');
