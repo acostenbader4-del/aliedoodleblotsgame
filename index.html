@@ -3,1103 +3,696 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stupid Little Things – Battle Tracker</title>
-<link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
-
-<!-- Firebase -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyCbTBpGWlFtEghapzX_QfMQiMB4yLVSU10",
-    authDomain: "doodleblotsthegame.firebaseapp.com",
-    databaseURL: "https://doodleblotsthegame-default-rtdb.firebaseio.com",
-    projectId: "doodleblotsthegame",
-    storageBucket: "doodleblotsthegame.firebasestorage.app",
-    messagingSenderId: "355617408175",
-    appId: "1:355617408175:web:a8b4ada49e9fa89cb7005a",
-    measurementId: "G-L06VZ8GCZT"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-
-  // Load doodle blots + items from Firebase
-  onValue(ref(db, "doodleBlots"), (snap) => {
-    const data = snap.val();
-    if (data) {
-      window.BLOT_DATA = data;
-      renderSetup();
-    }
-  });
-
-  onValue(ref(db, "itemCards"), (snap) => {
-    const data = snap.val();
-    if (data) {
-      window.ITEM_DATA = Array.isArray(data) ? data : Object.values(data);
-      renderSetup();
-    }
-  });
-</script>
-
+<title>Doodle Blots: The Game – Turn Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Fredoka+One&family=Baloo+2:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg: #0c0c14;
-  --panel: #12121e;
-  --card: #18182a;
-  --border: #2a2a44;
-  --accent: #8b7cf8;
-  --burn: #ff6b35;
-  --poison: #5cb85c;
-  --stun: #b06ad4;
-  --text: #ece8ff;
-  --muted: #6a6480;
-  --faint: #20203a;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { min-height: 100vh; }
-body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-serif; }
+  :root {
+    --pink:      #ff6eb4;
+    --pink2:     #ffa8d4;
+    --pink-pale: #ffe6f3;
+    --blue:      #5b8dee;
+    --blue2:     #93b8ff;
+    --blue-pale: #e4edff;
+    --purple:    #9b59d0;
+    --purple2:   #c59ef0;
+    --purple-pale: #f0e6ff;
+    --black:     #2b1d3a;
+    --white:     #fffaff;
+    --bg:        #fef0fb;
+    --fire:      #ff7043;
+    --poison:    #8e44ad;
+    --green:     #2ecc71;
+    --green2:    #a8f5ce;
+    --yellow:    #ffd166;
+    --ink:       #3a2050;
+  }
 
-/* ─── LOADING ─── */
-#loading {
-  display: flex; align-items: center; justify-content: center;
-  min-height: 100vh; flex-direction: column; gap: 16px;
-}
-#loading h2 { font-family: 'Permanent Marker', cursive; font-size: 32px; color: var(--accent); }
-.spinner {
-  width: 40px; height: 40px; border: 4px solid var(--border);
-  border-top-color: var(--accent); border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ─── SETUP ─── */
-#setup { display: none; padding: 24px; max-width: 1000px; margin: 0 auto; }
-.setup-title {
-  font-family: 'Permanent Marker', cursive; font-size: 42px; text-align: center;
-  background: linear-gradient(135deg, #8b7cf8 0%, #ff6b35 50%, #5cb85c 100%);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  margin-bottom: 8px;
-}
-.setup-sub { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 28px; letter-spacing: 2px; font-weight: 700; }
+  body {
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 15% 10%, #ff6eb433 0%, transparent 35%),
+      radial-gradient(circle at 85% 90%, #9b59d033 0%, transparent 35%),
+      radial-gradient(circle at 80% 15%, #5b8dee22 0%, transparent 30%);
+    font-family: 'Baloo 2', cursive;
+    color: var(--ink);
+    min-height: 100vh;
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='4' fill='%23ff6eb4' opacity='0.8'/%3E%3C/svg%3E") 10 10, auto;
+  }
 
-.setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-@media (max-width: 700px) { .setup-grid { grid-template-columns: 1fr; } }
+  /* ── BLOT SVG DOODLES ── */
+  .blot {
+    position: fixed;
+    border-radius: 50% 60% 40% 55% / 55% 40% 60% 45%;
+    opacity: 0.08;
+    pointer-events: none;
+    z-index: 0;
+    animation: blobFloat 8s ease-in-out infinite alternate;
+  }
+  .blot1 { width: 300px; height: 260px; background: var(--pink); top: -80px; left: -60px; animation-delay: 0s; }
+  .blot2 { width: 250px; height: 220px; background: var(--purple); bottom: -60px; right: -40px; animation-delay: -3s; }
+  .blot3 { width: 180px; height: 200px; background: var(--blue); top: 40%; right: -50px; animation-delay: -5s; }
+  @keyframes blobFloat {
+    from { transform: translate(0,0) rotate(-5deg) scale(1); }
+    to   { transform: translate(15px, 20px) rotate(8deg) scale(1.06); }
+  }
 
-.setup-panel {
-  background: var(--panel); border: 2px solid var(--border); border-radius: 16px; padding: 18px;
-}
-.setup-panel h2 { font-family: 'Permanent Marker', cursive; font-size: 20px; color: var(--accent); margin-bottom: 12px; }
-.name-input {
-  width: 100%; background: var(--card); border: 2px solid var(--border); border-radius: 10px;
-  padding: 8px 14px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 700;
-  margin-bottom: 14px; transition: border-color 0.2s;
-}
-.name-input:focus { outline: none; border-color: var(--accent); }
+  /* ── SQUIGGLY BORDER TRICK ── */
+  .squig {
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  }
+  .squig2 {
+    border-radius: 15px 255px 15px 225px / 225px 15px 255px 15px;
+  }
 
-.section-label { font-size: 11px; font-weight: 900; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
-.blot-list { display: flex; flex-direction: column; gap: 5px; max-height: 260px; overflow-y: auto; margin-bottom: 14px; }
-.blot-row {
-  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
-  background: var(--card); border: 2px solid var(--border); border-radius: 10px;
-  cursor: pointer; transition: all 0.15s; user-select: none;
-}
-.blot-row:hover:not(.taken) { border-color: var(--accent); background: #8b7cf811; }
-.blot-row.selected { border-color: var(--accent); background: #8b7cf822; }
-.blot-row.taken { opacity: 0.3; pointer-events: none; }
-.blot-row-name { flex: 1; font-weight: 900; font-size: 13px; }
-.blot-row-hp { font-size: 11px; color: var(--muted); font-weight: 700; }
-.blot-check {
-  width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border);
-  display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; transition: all 0.15s;
-}
-.blot-row.selected .blot-check { background: var(--accent); border-color: var(--accent); color: white; }
-.pick-count { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  /* ── OVERLAY ── */
+  #overlay {
+    position: fixed; inset: 0;
+    background: rgba(43, 29, 58, 0.65);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 999;
+    backdrop-filter: blur(5px);
+  }
+  #overlay.hidden { display: none; }
 
-.item-list { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow-y: auto; }
-.item-row {
-  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
-  background: var(--card); border: 1px solid var(--border); border-radius: 8px;
-  cursor: pointer; transition: all 0.15s; user-select: none;
-}
-.item-row:hover:not(.item-limit) { border-color: #f59e0b; }
-.item-row.item-selected { border-color: #f59e0b; background: #f59e0b11; }
-.item-row.item-limit:not(.item-selected) { opacity: 0.35; pointer-events: none; }
-.item-row-name { flex: 1; font-size: 12px; font-weight: 700; }
-.item-tag {
-  font-size: 10px; font-weight: 900; padding: 2px 7px; border-radius: 999px; letter-spacing: 0.5px;
-}
-.tag-heal { background: #26c6da22; color: #26c6da; }
-.tag-damage { background: #f4433622; color: #f44336; }
-.tag-status { background: #b06ad422; color: #b06ad4; }
-.tag-defence { background: #42a5f522; color: #42a5f5; }
-.tag-chaos { background: #ffc10722; color: #ffc107; }
+  .alert-card {
+    background: var(--white);
+    border: 4px solid var(--ink);
+    border-radius: 32px 8px 32px 8px;
+    padding: 2rem 2.2rem 1.8rem;
+    max-width: 490px;
+    width: 93%;
+    box-shadow: 6px 6px 0 var(--purple), 10px 10px 0 var(--ink);
+    text-align: center;
+    animation: popWobble 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    z-index: 1;
+  }
+  @keyframes popWobble {
+    0%   { transform: scale(0.5) rotate(-8deg); opacity: 0; }
+    60%  { transform: scale(1.05) rotate(2deg); }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+  }
 
-.start-btn {
-  display: block; width: 100%; margin-top: 20px; padding: 14px;
-  background: linear-gradient(135deg, #8b7cf8, #6c3af5);
-  border: none; border-radius: 14px; color: white;
-  font-family: 'Permanent Marker', cursive; font-size: 24px;
-  cursor: pointer; transition: transform 0.15s, opacity 0.15s;
-}
-.start-btn:hover:not(:disabled) { transform: scale(1.02); }
-.start-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .alert-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.5rem;
+    color: var(--purple);
+    margin-bottom: 1.2rem;
+    letter-spacing: 0.02em;
+    text-shadow: 2px 2px 0 var(--pink2);
+  }
 
-/* ─── GAME ─── */
-#game { display: none; flex-direction: column; min-height: 100vh; }
+  .alert-row {
+    display: flex; align-items: center; gap: 0.8rem;
+    border: 3px solid var(--ink);
+    border-radius: 20px 5px 20px 5px;
+    padding: 0.7rem 1rem;
+    margin-bottom: 0.6rem;
+    text-align: left;
+    font-family: 'Caveat', cursive;
+    font-size: 1.2rem;
+    font-weight: 600;
+    background: var(--white);
+  }
+  .alert-row.burn    { background: #fff3ee; border-color: var(--fire); }
+  .alert-row.poison  { background: var(--purple-pale); border-color: var(--poison); }
+  .alert-row.item    { background: #fffbe6; border-color: var(--yellow); }
+  .alert-row.expired { background: #f9f9f9; opacity: 0.65; }
+  .alert-emoji { font-size: 1.8rem; flex-shrink: 0; }
 
-.game-header {
-  background: var(--panel); border-bottom: 2px solid var(--border);
-  padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
-}
-.game-logo { font-family: 'Permanent Marker', cursive; font-size: 20px; color: var(--accent); }
-.turn-box {
-  background: var(--faint); border: 1px solid var(--border); border-radius: 8px;
-  padding: 4px 14px; font-size: 12px; font-weight: 900; letter-spacing: 2px; color: var(--muted);
-}
-.turn-indicator {
-  font-size: 13px; font-weight: 900; padding: 5px 16px; border-radius: 8px;
-  border: 2px solid var(--accent); color: var(--accent); background: #8b7cf811;
-  letter-spacing: 1px;
-}
-.reset-btn {
-  background: transparent; border: 1px solid var(--border); color: var(--muted);
-  border-radius: 8px; padding: 5px 12px; font-size: 11px; font-family: 'Nunito', sans-serif;
-  font-weight: 700; cursor: pointer; transition: all 0.15s;
-}
-.reset-btn:hover { border-color: #f44336; color: #f44336; }
+  .btn-ok {
+    margin-top: 1.2rem;
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    border: 3px solid var(--ink);
+    border-radius: 50px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    padding: 0.65rem 2.5rem;
+    cursor: pointer;
+    box-shadow: 4px 4px 0 var(--ink);
+    color: white;
+    letter-spacing: 0.05em;
+    transition: all 0.12s;
+  }
+  .btn-ok:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--ink); }
+  .btn-ok:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--ink); }
 
-.battlefield {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
-  flex: 1;
-}
-@media (max-width: 800px) { .battlefield { grid-template-columns: 1fr; } }
+  /* ── SETUP ── */
+  #setup-screen {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 2rem;
+  }
+  #setup-screen.hidden { display: none; }
 
-.player-zone {
-  background: var(--panel); border-right: 1px solid var(--border); padding: 14px;
-  display: flex; flex-direction: column; gap: 10px;
-}
-.player-zone:last-child { border-right: none; }
+  .logo-wrap { text-align: center; margin-bottom: 2.2rem; }
 
-.player-header { display: flex; align-items: center; justify-content: space-between; }
-.player-name { font-family: 'Permanent Marker', cursive; font-size: 22px; }
-.alive-count { font-size: 12px; color: var(--muted); font-weight: 700; }
+  .logo-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(2rem, 7vw, 3.5rem);
+    line-height: 1.1;
+    background: linear-gradient(135deg, var(--pink) 0%, var(--purple) 50%, var(--blue) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(3px 3px 0 rgba(43,29,58,0.15));
+    margin-bottom: 0.3rem;
+  }
 
-.zone-label {
-  font-size: 10px; font-weight: 900; letter-spacing: 3px; color: var(--muted);
-  text-transform: uppercase; padding: 3px 0; border-bottom: 1px solid var(--faint); margin-bottom: 4px;
-}
+  .logo-sub {
+    font-family: 'Caveat', cursive;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--purple);
+  }
 
-/* ─── BLOT CARD ─── */
-.blot-card {
-  background: var(--card); border: 2px solid var(--border); border-radius: 12px;
-  padding: 12px; transition: all 0.2s; position: relative;
-}
-.blot-card.active-slot { border-color: #2a2a44; }
-.blot-card.bench-slot { opacity: 0.75; }
-.blot-card.defeated {
-  opacity: 0.35; pointer-events: none; filter: grayscale(1);
-}
-.blot-card.is-current-actor { border-color: var(--accent); box-shadow: 0 0 18px #8b7cf833; }
+  /* Doodle blot icons around title */
+  .blot-icon {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border-radius: 50% 60% 40% 55% / 55% 40% 60% 45%;
+    margin: 0 4px;
+    vertical-align: middle;
+  }
+  .bi-pink { background: var(--pink); }
+  .bi-blue { background: var(--blue); }
+  .bi-purple { background: var(--purple); }
 
-.blot-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
-.blot-name { font-weight: 900; font-size: 14px; line-height: 1.2; }
-.blot-hp-label { font-size: 11px; color: var(--muted); font-weight: 700; white-space: nowrap; margin-left: 8px; }
+  .setup-box {
+    background: var(--white);
+    border: 4px solid var(--ink);
+    border-radius: 32px 8px 32px 8px;
+    padding: 2rem 2rem 1.8rem;
+    width: 100%; max-width: 460px;
+    box-shadow: 6px 6px 0 var(--pink), 10px 10px 0 var(--ink);
+  }
 
-.hp-bar-wrap { height: 10px; background: #0a0a14; border-radius: 5px; overflow: hidden; margin-bottom: 8px; border: 1px solid #1a1a2e; }
-.hp-bar-fill { height: 100%; border-radius: 5px; transition: width 0.4s ease, background 0.4s ease; }
+  .setup-label {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    color: var(--purple);
+    margin-bottom: 0.8rem;
+    letter-spacing: 0.03em;
+  }
 
-.statuses { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; min-height: 0; }
-.status-badge {
-  display: inline-flex; align-items: center; gap: 3px;
-  font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 999px;
-  border: 1px solid; cursor: pointer; transition: opacity 0.15s; letter-spacing: 0.5px;
-}
-.status-badge:hover { opacity: 0.7; }
-.s-burn { background: #ff6b3522; border-color: #ff6b35; color: #ff6b35; }
-.s-poison { background: #5cb85c22; border-color: #5cb85c; color: #5cb85c; }
-.s-stun { background: #b06ad422; border-color: #b06ad4; color: #b06ad4; }
+  #player-inputs { display: flex; flex-direction: column; gap: 0.55rem; margin-bottom: 0.8rem; }
 
-/* ─── ABILITY BUTTONS ─── */
-.ability-list { display: flex; flex-direction: column; gap: 4px; }
-.ability-btn {
-  width: 100%; background: var(--faint); border: 1px solid var(--border);
-  border-radius: 8px; padding: 7px 12px; text-align: left; cursor: pointer;
-  transition: all 0.15s; color: var(--text); font-family: 'Nunito', sans-serif;
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-}
-.ability-btn:hover:not(:disabled) { border-color: var(--accent); background: #8b7cf811; }
-.ability-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-.ability-btn.last-used { border-color: #f5a623; background: #f5a62311; }
-.ability-btn-name { font-size: 12px; font-weight: 900; flex: 1; }
-.ability-btn-tags { display: flex; gap: 4px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
-.ability-tag { font-size: 9px; font-weight: 900; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.5px; }
-.tag-atk { background: #f4433622; color: #f44336; }
-.tag-hlx { background: #26c6da22; color: #26c6da; }
-.tag-efx { background: #b06ad422; color: #b06ad4; }
-.tag-util { background: #ffc10722; color: #ffc107; }
-.tag-chaos { background: #ff9800; color: #000; font-weight: 900; }
+  .p-row {
+    display: flex; gap: 0.5rem; align-items: center;
+    animation: slideD 0.22s ease;
+  }
+  @keyframes slideD { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:none; } }
 
-/* ─── ITEMS ─── */
-.items-section { background: var(--faint); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
-.items-section h4 { font-size: 11px; color: #f59e0b; font-weight: 900; letter-spacing: 2px; margin-bottom: 8px; }
-.item-btns { display: flex; flex-direction: column; gap: 4px; }
-.item-use-btn {
-  width: 100%; background: var(--card); border: 1px solid #f59e0b44;
-  border-radius: 8px; padding: 6px 12px; text-align: left; cursor: pointer;
-  transition: all 0.15s; color: var(--text); font-family: 'Nunito', sans-serif;
-  display: flex; align-items: center; gap: 8px;
-}
-.item-use-btn:hover:not(:disabled) { border-color: #f59e0b; background: #f59e0b11; }
-.item-use-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-.item-use-btn.used { opacity: 0.25; text-decoration: line-through; pointer-events: none; }
-.item-use-name { font-size: 12px; font-weight: 700; flex: 1; }
+  .p-row input {
+    flex: 1;
+    border: 3px solid var(--ink);
+    border-radius: 50px;
+    font-family: 'Baloo 2', cursive;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    outline: none;
+    background: var(--pink-pale);
+    color: var(--ink);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .p-row input:focus { border-color: var(--purple); background: var(--purple-pale); }
+  .p-row input::placeholder { color: var(--purple2); }
 
-/* ─── ACTION MODAL ─── */
-#modal-overlay {
-  display: none; position: fixed; inset: 0; background: #0009; z-index: 100;
-  align-items: center; justify-content: center; padding: 20px;
-}
-#modal-overlay.open { display: flex; }
-#modal {
-  background: var(--panel); border: 2px solid var(--accent); border-radius: 18px;
-  padding: 24px; max-width: 460px; width: 100%; max-height: 90vh; overflow-y: auto;
-  box-shadow: 0 0 60px #8b7cf844;
-}
-#modal h3 { font-family: 'Permanent Marker', cursive; font-size: 20px; color: var(--accent); margin-bottom: 4px; }
-#modal .modal-desc { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
-#modal .modal-label { font-size: 11px; font-weight: 900; color: var(--muted); letter-spacing: 2px; margin-bottom: 8px; }
-.target-list { display: flex; flex-direction: column; gap: 6px; }
-.target-btn {
-  display: flex; align-items: center; gap: 12px; padding: 10px 14px;
-  background: var(--card); border: 2px solid var(--border); border-radius: 10px;
-  cursor: pointer; transition: all 0.15s; text-align: left; color: var(--text);
-  font-family: 'Nunito', sans-serif;
-}
-.target-btn:hover { border-color: var(--accent); background: #8b7cf811; }
-.target-btn-name { font-weight: 900; font-size: 14px; flex: 1; }
-.target-btn-hp { font-size: 12px; color: var(--muted); font-weight: 700; }
-.target-btn-statuses { display: flex; gap: 4px; }
-.coin-section { text-align: center; padding: 10px 0; }
-.coin-btn {
-  background: linear-gradient(135deg, #f59e0b, #d97706); border: none; border-radius: 12px;
-  padding: 12px 32px; color: white; font-family: 'Permanent Marker', cursive; font-size: 20px;
-  cursor: pointer; transition: transform 0.15s;
-}
-.coin-btn:hover { transform: scale(1.04); }
-.coin-result { font-size: 28px; margin-top: 12px; font-weight: 900; }
-.modal-cancel {
-  margin-top: 14px; width: 100%; background: transparent; border: 1px solid var(--border);
-  color: var(--muted); border-radius: 10px; padding: 8px; font-family: 'Nunito', sans-serif;
-  font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s;
-}
-.modal-cancel:hover { border-color: #f44336; color: #f44336; }
+  .btn-del {
+    background: var(--pink);
+    border: 3px solid var(--ink);
+    color: white;
+    font-size: 1rem; font-weight: 900;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    flex-shrink: 0;
+    box-shadow: 2px 2px 0 var(--ink);
+    transition: all 0.1s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .btn-del:hover { transform: translate(-1px,-1px) rotate(-10deg); box-shadow: 3px 3px 0 var(--ink); }
 
-/* ─── LOG ─── */
-#log-bar {
-  background: #09090f; border-top: 2px solid var(--border); padding: 8px 16px;
-  display: flex; gap: 12px; align-items: center; overflow-x: auto; flex-shrink: 0;
-}
-.log-entry { font-size: 12px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
-.log-entry:first-child { color: var(--text); font-weight: 700; }
-.log-dmg { color: #f44336; }
-.log-heal { color: #26c6da; }
-.log-status { color: #b06ad4; }
-.log-item { color: #f59e0b; }
+  .btn-add {
+    width: 100%;
+    background: var(--blue-pale);
+    border: 3px dashed var(--blue);
+    border-radius: 50px;
+    font-family: 'Baloo 2', cursive;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: var(--blue);
+    margin-bottom: 1.2rem;
+    transition: all 0.15s;
+  }
+  .btn-add:hover { background: var(--blue2); color: white; border-style: solid; }
 
-/* ─── WIN OVERLAY ─── */
-#win-overlay {
-  display: none; position: fixed; inset: 0; background: #000c; z-index: 200;
-  align-items: center; justify-content: center; flex-direction: column; gap: 20px;
-}
-#win-overlay.open { display: flex; }
-#win-overlay h1 { font-family: 'Permanent Marker', cursive; font-size: 52px; color: #f59e0b; text-align: center; text-shadow: 0 0 40px #f59e0b88; }
-#win-overlay p { font-size: 18px; color: var(--muted); text-align: center; }
-#win-overlay button {
-  background: linear-gradient(135deg, #8b7cf8, #6c3af5); border: none; border-radius: 14px;
-  color: white; padding: 12px 32px; font-family: 'Permanent Marker', cursive; font-size: 22px; cursor: pointer;
-}
+  .btn-go {
+    width: 100%;
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    border: 4px solid var(--ink);
+    border-radius: 50px;
+    color: white;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.2rem;
+    padding: 0.8rem;
+    cursor: pointer;
+    box-shadow: 5px 5px 0 var(--ink);
+    transition: all 0.12s;
+    letter-spacing: 0.05em;
+  }
+  .btn-go:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--ink); }
+  .btn-go:active { transform: translate(2px,2px); box-shadow: 3px 3px 0 var(--ink); }
 
-/* scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  /* ── GAME SCREEN ── */
+  #game-screen {
+    position: relative; z-index: 1;
+    padding: 1rem 1.2rem 2.5rem;
+    max-width: 1200px; margin: 0 auto;
+  }
+  #game-screen.hidden { display: none; }
+
+  /* TOP BAR */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 0.75rem;
+    background: linear-gradient(135deg, var(--purple), var(--blue));
+    border: 4px solid var(--ink);
+    border-radius: 24px 6px 24px 6px;
+    padding: 0.9rem 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 5px 5px 0 var(--ink);
+  }
+
+  .turn-info {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(1rem, 3vw, 1.5rem);
+    color: white;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+    line-height: 1.5;
+  }
+  .turn-sub {
+    font-family: 'Caveat', cursive;
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.8);
+  }
+
+  .item-pill {
+    background: var(--yellow);
+    border: 3px solid var(--ink);
+    border-radius: 50px;
+    padding: 0.4rem 1.1rem;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.85rem;
+    color: var(--ink);
+    box-shadow: 3px 3px 0 var(--ink);
+    animation: jiggle 0.5s ease-in-out infinite alternate;
+    display: flex; align-items: center; gap: 0.4rem;
+  }
+  .item-pill.hidden { display: none; }
+  @keyframes jiggle {
+    from { transform: rotate(-4deg) scale(1); }
+    to   { transform: rotate(4deg) scale(1.05); }
+  }
+
+  .next-item-txt {
+    font-family: 'Caveat', cursive;
+    font-size: 1rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.8);
+    text-align: right;
+  }
+
+  /* PLAYER CARDS */
+  #players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
+    gap: 1.1rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .p-card {
+    background: var(--white);
+    border: 4px solid var(--ink);
+    border-radius: 28px 6px 28px 6px;
+    padding: 1.2rem 1.2rem 1rem;
+    box-shadow: 5px 5px 0 var(--pink), 8px 8px 0 var(--ink);
+    position: relative;
+    transition: opacity 0.3s, transform 0.2s;
+    overflow: hidden;
+  }
+  .p-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 6px;
+    background: linear-gradient(90deg, var(--pink), var(--purple), var(--blue));
+    border-radius: 24px 6px 0 0;
+  }
+  .p-card.done-card {
+    opacity: 0.5;
+    transform: scale(0.97);
+    box-shadow: 3px 3px 0 #ccc, 5px 5px 0 #bbb;
+  }
+  .p-card.done-card::before { background: #ccc; }
+
+  .p-name-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0.85rem;
+  }
+  .p-name {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    color: var(--ink);
+    max-width: 60%;
+    word-break: break-word;
+    line-height: 1.3;
+  }
+  .p-badge {
+    font-family: 'Caveat', cursive;
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 0.2rem 0.75rem;
+    border-radius: 50px;
+    border: 2.5px solid var(--ink);
+  }
+  .p-badge.waiting { background: var(--pink-pale); color: var(--pink); }
+  .p-badge.done2   { background: var(--green2); color: #166534; }
+
+  /* EFFECTS */
+  .effects-row {
+    display: flex; flex-wrap: wrap; gap: 0.4rem;
+    min-height: 32px; margin-bottom: 0.85rem; align-items: center;
+  }
+  .fx-chip {
+    display: flex; align-items: center; gap: 0.3rem;
+    font-family: 'Caveat', cursive;
+    font-size: 1rem; font-weight: 700;
+    padding: 0.2rem 0.7rem;
+    border-radius: 50px;
+    border: 2.5px solid var(--ink);
+    cursor: pointer;
+    transition: transform 0.1s;
+    box-shadow: 2px 2px 0 var(--ink);
+    user-select: none;
+  }
+  .fx-chip:hover { transform: translate(-1px,-1px) rotate(-3deg); box-shadow: 3px 3px 0 var(--ink); }
+  .fx-chip:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--ink); }
+  .fx-chip.burn    { background: #ffe0d4; color: var(--fire); }
+  .fx-chip.poison  { background: var(--purple-pale); color: var(--poison); }
+  .chip-t {
+    background: rgba(0,0,0,0.15);
+    border-radius: 50px;
+    padding: 0 6px; font-size: 0.8rem;
+    min-width: 20px; text-align: center;
+  }
+  .no-fx {
+    font-family: 'Caveat', cursive;
+    font-size: 1rem; color: #c9a8d8; font-weight: 600; font-style: italic;
+  }
+
+  .fx-btns { display: flex; gap: 0.5rem; margin-bottom: 0.85rem; }
+  .btn-fx {
+    flex: 1;
+    border: 3px solid var(--ink);
+    border-radius: 50px;
+    font-family: 'Baloo 2', cursive;
+    font-weight: 800;
+    font-size: 0.85rem;
+    padding: 0.4rem 0.2rem;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 var(--ink);
+    transition: all 0.1s;
+    display: flex; align-items: center; justify-content: center; gap: 0.3rem;
+  }
+  .btn-fx:hover:not(:disabled) { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--ink); }
+  .btn-fx:active:not(:disabled) { transform: translate(1px,1px); box-shadow: 2px 2px 0 var(--ink); }
+  .btn-fx:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-fx.f-burn   { background: #ffded0; color: var(--fire); }
+  .btn-fx.f-poison { background: var(--purple-pale); color: var(--poison); }
+
+  .btn-end {
+    width: 100%;
+    border: 3px solid var(--ink);
+    border-radius: 50px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.95rem;
+    padding: 0.7rem 0.5rem;
+    cursor: pointer;
+    box-shadow: 4px 4px 0 var(--ink);
+    transition: all 0.12s;
+    letter-spacing: 0.02em;
+  }
+  .btn-end:hover:not(:disabled) { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--ink); }
+  .btn-end:active:not(:disabled) { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--ink); }
+  .btn-end:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-end.act { background: linear-gradient(135deg, var(--pink), var(--purple)); color: white; }
+  .btn-end.dn  { background: var(--green2); color: #166534; border-color: #2ecc71; box-shadow: 4px 4px 0 #2ecc71; }
+
+  /* LOG */
+  .log-panel {
+    background: var(--white);
+    border: 4px solid var(--ink);
+    border-radius: 6px 28px 6px 28px;
+    padding: 1.1rem 1.2rem;
+    box-shadow: 5px 5px 0 var(--blue), 8px 8px 0 var(--ink);
+  }
+  .log-head {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    color: var(--blue);
+    margin-bottom: 0.7rem;
+    letter-spacing: 0.03em;
+  }
+  #log-list {
+    max-height: 155px; overflow-y: auto;
+    display: flex; flex-direction: column-reverse; gap: 0.25rem;
+    scrollbar-width: thin; scrollbar-color: var(--purple2) transparent;
+  }
+  .log-row {
+    display: flex; align-items: baseline; gap: 0.5rem;
+    font-family: 'Caveat', cursive;
+    font-size: 1.05rem; font-weight: 600;
+    padding: 0.2rem 0;
+    border-bottom: 2px dashed #e8d0f5;
+    animation: fuD 0.2s ease;
+    color: #5a3a70;
+  }
+  @keyframes fuD { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+  .log-t {
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.7rem; color: var(--blue); flex-shrink: 0; margin-top: 3px;
+    background: var(--blue-pale); padding: 1px 6px; border-radius: 20px; border: 1.5px solid var(--blue2);
+  }
+  .log-burn    { color: var(--fire); }
+  .log-poison  { color: var(--poison); }
+  .log-system  { color: #b07fcc; font-style: italic; }
+  .log-item    { color: #b07000; }
+  .log-round   { color: #1a8a4a; }
 </style>
 </head>
 <body>
 
-<!-- LOADING -->
-<div id="loading">
-  <h2>Stupid Little Things</h2>
-  <div class="spinner"></div>
-  <p style="color:var(--muted);font-size:13px;">Loading Doodle Blots from Firebase...</p>
+<!-- BG BLOTS -->
+<div class="blot blot1"></div>
+<div class="blot blot2"></div>
+<div class="blot blot3"></div>
+
+<!-- ALERT OVERLAY -->
+<div id="overlay" class="hidden">
+  <div class="alert-card">
+    <div class="alert-title" id="aHead">✨ Turn Alert!</div>
+    <div id="aBody"></div>
+    <button class="btn-ok" onclick="closeAlert()">Got it, let's go! 🎨</button>
+  </div>
 </div>
 
 <!-- SETUP -->
-<div id="setup">
-  <h1 class="setup-title">Stupid Little Things</h1>
-  <p class="setup-sub">BATTLE TRACKER</p>
-
-  <div class="setup-grid">
-    <!-- Player 1 -->
-    <div class="setup-panel">
-      <h2>Player 1</h2>
-      <input class="name-input" id="p1-name" placeholder="Enter player name..." value="Player 1">
-      <div class="section-label">Choose 6 Doodle Blots</div>
-      <div class="pick-count" id="p1-count">0 / 6 selected</div>
-      <div class="blot-list" id="p1-blot-list"></div>
-      <div class="section-label" style="margin-top:12px;">Choose 3 Item Cards</div>
-      <div class="pick-count" id="p1-item-count">0 / 3 selected</div>
-      <div class="item-list" id="p1-item-list"></div>
-    </div>
-
-    <!-- Player 2 -->
-    <div class="setup-panel">
-      <h2>Player 2</h2>
-      <input class="name-input" id="p2-name" placeholder="Enter player name..." value="Player 2">
-      <div class="section-label">Choose 6 Doodle Blots</div>
-      <div class="pick-count" id="p2-count">0 / 6 selected</div>
-      <div class="blot-list" id="p2-blot-list"></div>
-      <div class="section-label" style="margin-top:12px;">Choose 3 Item Cards</div>
-      <div class="pick-count" id="p2-item-count">0 / 3 selected</div>
-      <div class="item-list" id="p2-item-list"></div>
+<div id="setup-screen">
+  <div class="logo-wrap">
+    <div class="logo-title">Doodle Blots</div>
+    <div style="font-family:'Fredoka One',cursive;font-size:1.3rem;color:var(--blue);margin-bottom:0.3rem;letter-spacing:0.05em;">THE GAME</div>
+    <div class="logo-sub">
+      <span class="blot-icon bi-pink"></span>
+      Turn Tracker 3000
+      <span class="blot-icon bi-purple"></span>
+      Very Official
+      <span class="blot-icon bi-blue"></span>
     </div>
   </div>
 
-  <button class="start-btn" id="start-btn" disabled onclick="startGame()">⚔️ BEGIN BATTLE</button>
+  <div class="setup-box">
+    <div class="setup-label">🖍️ Who's playing today?</div>
+    <div id="player-inputs">
+      <div class="p-row">
+        <input type="text" placeholder="Player name..." maxlength="20">
+        <button class="btn-del" onclick="delRow(this)">✕</button>
+      </div>
+    </div>
+    <button class="btn-add" onclick="addRow()">＋ Add another player!</button>
+    <button class="btn-go" onclick="startGame()">🎨 Start the Game!</button>
+  </div>
 </div>
 
 <!-- GAME -->
-<div id="game">
-  <div class="game-header">
-    <span class="game-logo">Stupid Little Things</span>
-    <span class="turn-indicator" id="turn-indicator">Player 1's Turn</span>
-    <span class="turn-box" id="turn-box">TURN 1</span>
-    <button class="reset-btn" onclick="if(confirm('Reset game?')) location.reload()">↩ Reset</button>
+<div id="game-screen" class="hidden">
+  <div class="topbar">
+    <div>
+      <div class="turn-info">🎨 Turn <span id="turnNum">1</span></div>
+      <div class="turn-sub">Round <span id="roundNum">1</span> underway — doodle responsibly!</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.4rem">
+      <div id="itemPill" class="item-pill hidden">🎁 Item Cards Time!</div>
+      <div id="nextItemTxt" class="next-item-txt"></div>
+    </div>
   </div>
 
-  <div class="battlefield">
-    <div class="player-zone" id="zone-p1"></div>
-    <div class="player-zone" id="zone-p2"></div>
+  <div id="players-grid"></div>
+
+  <div class="log-panel">
+    <div class="log-head">📋 The Official Blot Chronicle (very legal document)</div>
+    <div id="log-list"></div>
   </div>
-
-  <div id="log-bar"></div>
-</div>
-
-<!-- MODAL -->
-<div id="modal-overlay">
-  <div id="modal"></div>
-</div>
-
-<!-- WIN -->
-<div id="win-overlay" id="win-overlay">
-  <h1 id="win-text">🏆 WINNER!</h1>
-  <p id="win-sub"></p>
-  <button onclick="location.reload()">Play Again</button>
 </div>
 
 <script>
-// ─── STATE ───────────────────────────────────────────────────────────────────
-let state = {
-  players: [null, null],   // will be populated on game start
-  turn: 0,                 // 0 = p1, 1 = p2
-  turnNumber: 1,
-  pendingAction: null,     // { type:'ability'|'item', actorPid, actorBlotId, ability/item, needsCoin }
-  log: []
-};
+  const BURN_Q   = ["someone touched the forbidden crayon 🖍️","ow ow ow that's hot!","extra crispy doodle","was it worth it? probably not","oopsie daisy 🔥"];
+  const POISON_Q = ["ate the purple paint AGAIN 🟣","that blot looked suspicious","tummy goes gurgle gurgle","very slimy. not ideal.","they knew the risks"];
+  const ITEM_Q   = ["Free stuff for everyone! 🎁","The goodie bag has arrived!","Treat yourself, you earned it 🎀","Item time!! best turn!!","Reach into the mystery pile!"];
+  const ROUND_Q  = ["mic drop 🎤","zoom zoom!","later!","seeya 👋","done! nailed it!","bye-eee~","✅ finished!"];
 
-let p1Blots = [], p2Blots = [];       // selected blot names
-let p1Items = [], p2Items = [];       // selected item card objects
+  const rand = a => a[Math.floor(Math.random()*a.length)];
+  const esc  = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-const ITEM_TYPE_COLORS = { heal:'tag-heal', damage:'tag-damage', status:'tag-efx', defence:'tag-defence', chaos:'tag-chaos' };
+  let players = [], turn = 1;
 
-// ─── SETUP RENDERING ─────────────────────────────────────────────────────────
-function renderSetup() {
-  if (!window.BLOT_DATA || !window.ITEM_DATA) return;
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('setup').style.display = 'block';
-  renderBlotPickers();
-  renderItemPickers();
-}
-
-function renderBlotPickers() {
-  const blots = Object.entries(window.BLOT_DATA);
-  ['p1','p2'].forEach(pid => {
-    const el = document.getElementById(`${pid}-blot-list`);
-    el.innerHTML = '';
-    blots.forEach(([name, data]) => {
-      const myArr = pid === 'p1' ? p1Blots : p2Blots;
-      const otherArr = pid === 'p1' ? p2Blots : p1Blots;
-      const selected = myArr.includes(name);
-      const taken = otherArr.includes(name);
-      const row = document.createElement('div');
-      row.className = `blot-row${selected ? ' selected' : ''}${taken ? ' taken' : ''}`;
-      row.innerHTML = `
-        <div class="blot-check">${selected ? '✓' : ''}</div>
-        <div class="blot-row-name">${name}</div>
-        <div class="blot-row-hp">HP: ${data.hp}</div>
-      `;
-      row.onclick = () => toggleBlot(pid, name);
-      el.appendChild(row);
-    });
-  });
-  updateSetupBtn();
-}
-
-function toggleBlot(pid, name) {
-  const arr = pid === 'p1' ? p1Blots : p2Blots;
-  const idx = arr.indexOf(name);
-  if (idx !== -1) { arr.splice(idx, 1); }
-  else if (arr.length < 6) { arr.push(name); }
-  document.getElementById(`${pid}-count`).textContent = `${arr.length} / 6 selected`;
-  renderBlotPickers();
-}
-
-function renderItemPickers() {
-  const items = window.ITEM_DATA;
-  ['p1','p2'].forEach(pid => {
-    const el = document.getElementById(`${pid}-item-list`);
-    el.innerHTML = '';
-    items.forEach((item, i) => {
-      const myArr = pid === 'p1' ? p1Items : p2Items;
-      const selected = myArr.some(x => x.name === item.name);
-      const atLimit = myArr.length >= 3 && !selected;
-      const row = document.createElement('div');
-      row.className = `item-row${selected ? ' item-selected' : ''}${atLimit ? ' item-limit' : ''}`;
-      row.innerHTML = `
-        <div class="item-row-name">${item.name}</div>
-        <div class="item-tag ${ITEM_TYPE_COLORS[item.type] || 'tag-chaos'}">${item.type || '?'}</div>
-      `;
-      row.onclick = () => toggleItem(pid, item);
-      el.appendChild(row);
-    });
-  });
-  updateSetupBtn();
-}
-
-function toggleItem(pid, item) {
-  const arr = pid === 'p1' ? p1Items : p2Items;
-  const idx = arr.findIndex(x => x.name === item.name);
-  if (idx !== -1) { arr.splice(idx, 1); }
-  else if (arr.length < 3) { arr.push({ ...item, used: false }); }
-  document.getElementById(`${pid}-item-count`).textContent = `${arr.length} / 3 selected`;
-  renderItemPickers();
-}
-
-function updateSetupBtn() {
-  const btn = document.getElementById('start-btn');
-  btn.disabled = p1Blots.length !== 6 || p2Blots.length !== 6;
-}
-
-// ─── GAME START ───────────────────────────────────────────────────────────────
-function startGame() {
-  function makeBlot(name, isActive) {
-    const d = window.BLOT_DATA[name];
-    return {
-      id: Math.random().toString(36).slice(2),
-      name,
-      maxHp: d.hp,
-      hp: d.hp,
-      abilities: d.abilities || [],
-      statuses: [],   // [{type:'burn'|'poison'|'stun', turns:5}]
-      lastAbility: null,
-      active: isActive,
-      defeated: false
-    };
+  function addRow() {
+    const d = document.createElement('div');
+    d.className = 'p-row';
+    d.innerHTML = `<input type="text" placeholder="Player name..." maxlength="20"><button class="btn-del" onclick="delRow(this)">✕</button>`;
+    document.getElementById('player-inputs').appendChild(d);
   }
-  state.players = [
-    {
-      name: document.getElementById('p1-name').value || 'Player 1',
-      blots: p1Blots.map((n, i) => makeBlot(n, i < 3)),
-      items: p1Items.map(x => ({ ...x, used: false }))
-    },
-    {
-      name: document.getElementById('p2-name').value || 'Player 2',
-      blots: p2Blots.map((n, i) => makeBlot(n, i < 3)),
-      items: p2Items.map(x => ({ ...x, used: false }))
-    }
-  ];
-  document.getElementById('setup').style.display = 'none';
-  document.getElementById('game').style.display = 'flex';
-  addLog('⚔️ Battle started!', 'plain');
-  renderGame();
-}
+  function delRow(b) {
+    if (document.querySelectorAll('.p-row').length > 1) b.parentElement.remove();
+  }
 
-// ─── RENDER GAME ─────────────────────────────────────────────────────────────
-function renderGame() {
-  state.players.forEach((player, pid) => {
-    const zone = document.getElementById(`zone-p${pid + 1}`);
-    zone.innerHTML = '';
+  function startGame() {
+    const names = [...document.querySelectorAll('#player-inputs input')].map(i=>i.value.trim()).filter(Boolean);
+    if (!names.length) { alert('Add at least one player! 🖍️'); return; }
+    players = names.map(n => ({ name:n, done:false, effects:[] }));
+    turn = 1;
+    document.getElementById('setup-screen').classList.add('hidden');
+    document.getElementById('game-screen').classList.remove('hidden');
+    render();
+    log('system', `🎉 Doodle Blots: The Game begins! ${players.length} player${players.length>1?'s':''} ready to get weird!`);
+    showAlert(true);
+  }
 
-    // Header
-    const aliveCount = player.blots.filter(b => !b.defeated).length;
-    zone.innerHTML += `
-      <div class="player-header">
-        <span class="player-name" style="color:${pid===0?'#8b7cf8':'#ff6b35'}">${player.name}</span>
-        <span class="alive-count">${aliveCount}/6 standing</span>
-      </div>`;
+  function addEffect(i, type) {
+    players[i].effects = players[i].effects.filter(e=>e.type!==type);
+    players[i].effects.push({ type, left:5 });
+    const q = type==='burn' ? rand(BURN_Q) : rand(POISON_Q);
+    log(type, `${players[i].name} is ${type==='burn'?'🔥 BURNED':'☠️ POISONED'}! ${q}`);
+    render();
+  }
+  function removeEffect(i, type) {
+    if (!confirm(`Remove ${type} from ${players[i].name}? That's mighty generous of you 🌸`)) return;
+    players[i].effects = players[i].effects.filter(e=>e.type!==type);
+    log('system', `${players[i].name}'s ${type} was removed. Suspiciously convenient 👀`);
+    render();
+  }
+  function endRound(i) {
+    if (players[i].done) return;
+    players[i].done = true;
+    log('round', `${players[i].name} ended their round! ${rand(ROUND_Q)}`);
+    if (players.every(p=>p.done)) advanceTurn(); else render();
+  }
+  function advanceTurn() {
+    players.forEach(p => {
+      p.effects = p.effects.map(e=>({...e,left:e.left-1})).filter(e=>e.left>0);
+      p.done = false;
+    });
+    turn++;
+    log('system', `🎨 ── Turn ${turn} starts! ──`);
+    render();
+    showAlert(false);
+  }
 
-    // Active blots
-    const active = player.blots.filter(b => b.active);
-    if (active.length) {
-      zone.innerHTML += `<div class="zone-label">⚡ Active</div>`;
-      active.forEach(blot => zone.appendChild(makeBlotCard(blot, pid, true)));
-    }
-
-    // Bench blots
-    const bench = player.blots.filter(b => !b.active);
-    if (bench.length) {
-      zone.innerHTML += `<div class="zone-label">🪑 Bench</div>`;
-      bench.forEach(blot => zone.appendChild(makeBlotCard(blot, pid, false)));
-    }
-
-    // Items
-    if (player.items.length) {
-      const itemSection = document.createElement('div');
-      itemSection.className = 'items-section';
-      itemSection.innerHTML = `<h4>🎒 ITEM CARDS</h4><div class="item-btns" id="items-p${pid+1}"></div>`;
-      zone.appendChild(itemSection);
-      player.items.forEach((item, idx) => {
-        const btn = document.createElement('button');
-        btn.className = `item-use-btn${item.used ? ' used' : ''}`;
-        btn.disabled = item.used || state.turn !== pid;
-        btn.innerHTML = `
-          <span class="item-use-name">${item.name}</span>
-          <span class="item-tag ${ITEM_TYPE_COLORS[item.type] || 'tag-chaos'}">${item.type}</span>`;
-        btn.onclick = () => openItemModal(pid, idx);
-        itemSection.querySelector('.item-btns').appendChild(btn);
+  function showAlert(first) {
+    const rows = [];
+    if (turn % 6 === 0) rows.push({ cls:'item', emoji:'🎁', html:`<strong>Item Card Time!</strong> It's turn ${turn}! ${rand(ITEM_Q)}` });
+    players.forEach(p => {
+      p.effects.forEach(e => {
+        const b = e.type==='burn';
+        rows.push({ cls: b?'burn':'poison', emoji: b?'🔥':'☠️',
+          html: `<strong>${esc(p.name)}</strong> takes <span style="color:${b?'var(--fire)':'var(--poison)'}; font-weight:700">${e.type} damage</span>! (${e.left} turn${e.left!==1?'s':''} left)` });
       });
-    }
-  });
-
-  // Turn indicator
-  document.getElementById('turn-indicator').textContent = `${state.players[state.turn].name}'s Turn`;
-  document.getElementById('turn-box').textContent = `TURN ${state.turnNumber}`;
-
-  // Log
-  renderLog();
-}
-
-function makeBlotCard(blot, pid, isActive) {
-  const card = document.createElement('div');
-  const pct = Math.max(0, (blot.hp / blot.maxHp) * 100);
-  const hpColor = pct > 60 ? '#4caf50' : pct > 30 ? '#ffc107' : '#f44336';
-  const isCurrentActor = state.turn === pid && isActive && !blot.defeated;
-
-  card.className = `blot-card${isActive ? ' active-slot' : ' bench-slot'}${blot.defeated ? ' defeated' : ''}${isCurrentActor ? ' is-current-actor' : ''}`;
-
-  const statusHTML = blot.statuses.map(s =>
-    `<span class="status-badge s-${s.type}" onclick="removeStatus(${pid},'${blot.id}','${s.type}')" title="Click to remove">
-      ${{ burn: '🔥 BURN', poison: '☠️ POISON', stun: '💫 STUN' }[s.type]} (${s.turns})
-    </span>`
-  ).join('');
-
-  const abilitiesHTML = blot.abilities.map(ab => {
-    const tags = getAbilityTags(ab);
-    const isLastUsed = blot.lastAbility === ab.name;
-    const isStunned = blot.statuses.some(s => s.type === 'stun');
-    const isMyTurn = state.turn === pid;
-    const disabled = !isMyTurn || isStunned || blot.defeated || !isActive || isLastUsed;
-    return `
-      <button class="ability-btn${isLastUsed ? ' last-used' : ''}" ${disabled ? 'disabled' : ''}
-        onclick="openAbilityModal(${pid},'${blot.id}','${ab.name.replace(/'/g,"\\'")}')">
-        <span class="ability-btn-name">${ab.name}${isLastUsed ? ' ⏳' : ''}</span>
-        <span class="ability-btn-tags">${tags.map(t => `<span class="ability-tag ${t.cls}">${t.label}</span>`).join('')}</span>
-      </button>`;
-  }).join('');
-
-  card.innerHTML = `
-    <div class="blot-top">
-      <span class="blot-name">${blot.name}</span>
-      <span class="blot-hp-label">${blot.hp} / ${blot.maxHp} HP</span>
-    </div>
-    <div class="hp-bar-wrap"><div class="hp-bar-fill" style="width:${pct}%;background:${hpColor}"></div></div>
-    <div class="statuses">${statusHTML}</div>
-    <div class="ability-list">${abilitiesHTML}</div>
-  `;
-  return card;
-}
-
-function getAbilityTags(ab) {
-  const tags = [];
-  const e = ab.effect;
-  if (!e) return tags;
-  if (e.damage > 0) tags.push({ cls: 'tag-atk', label: `⚔️ ${e.damage}` });
-  if (e.heal > 0) tags.push({ cls: 'tag-hlx', label: `💚 ${e.heal}` });
-  if (e.selfDamage > 0) tags.push({ cls: 'tag-atk', label: `💥 ${e.selfDamage}` });
-  if (e.statusInflict) tags.push({ cls: 'tag-efx', label: e.statusInflict.toUpperCase() });
-  if (e.statusClear) tags.push({ cls: 'tag-hlx', label: 'CLEAR' });
-  if (e.coinFlip) tags.push({ cls: 'tag-chaos', label: '🪙' });
-  if (e.skipTurn) tags.push({ cls: 'tag-util', label: 'SKIP' });
-  if (e.allTargets) tags.push({ cls: 'tag-atk', label: 'ALL' });
-  return tags;
-}
-
-// ─── ABILITY MODAL ────────────────────────────────────────────────────────────
-function openAbilityModal(pid, blotId, abilityName) {
-  const player = state.players[pid];
-  const blot = player.blots.find(b => b.id === blotId);
-  const ab = blot.abilities.find(a => a.name === abilityName);
-  if (!ab) return;
-
-  const e = ab.effect || {};
-  const overlay = document.getElementById('modal-overlay');
-  const modal = document.getElementById('modal');
-
-  // coin flip first?
-  if (e.coinFlip) {
-    modal.innerHTML = `
-      <h3>${ab.name}</h3>
-      <p class="modal-desc">${ab.desc}</p>
-      <div class="coin-section">
-        <button class="coin-btn" onclick="flipCoin(${pid},'${blotId}','${abilityName.replace(/'/g,"\\'")}')">🪙 Flip the Coin</button>
-        <div id="coin-result" class="coin-result"></div>
-      </div>
-      <button class="modal-cancel" onclick="closeModal()">Cancel</button>`;
-    overlay.classList.add('open');
-    return;
-  }
-
-  // needs a target?
-  if (needsTarget(e)) {
-    const enemies = state.players[1 - pid].blots.filter(b => b.active && !b.defeated);
-    const allies = state.players[pid].blots.filter(b => b.active && !b.defeated && b.id !== blotId);
-    const allActive = [...state.players[0].blots, ...state.players[1].blots].filter(b => b.active && !b.defeated);
-
-    let targetPool = enemies;
-    if (e.targetAllies) targetPool = allies;
-    if (e.targetAny) targetPool = allActive;
-
-    modal.innerHTML = `
-      <h3>${ab.name}</h3>
-      <p class="modal-desc">${ab.desc}</p>
-      <div class="modal-label">CHOOSE TARGET</div>
-      <div class="target-list">
-        ${targetPool.map(t => {
-          const tPid = state.players[0].blots.find(b => b.id === t.id) ? 0 : 1;
-          return `<button class="target-btn" onclick="executeAbility(${pid},'${blotId}','${abilityName.replace(/'/g,"\\'")}','${t.id}')">
-            <span class="target-btn-name">${t.name}</span>
-            <span class="target-btn-hp">${t.hp}/${t.maxHp} HP</span>
-            <span class="target-btn-statuses">
-              ${t.statuses.map(s => `<span style="font-size:14px">${{burn:'🔥',poison:'☠️',stun:'💫'}[s.type]}</span>`).join('')}
-            </span>
-          </button>`;
-        }).join('')}
-      </div>
-      <button class="modal-cancel" onclick="closeModal()">Cancel</button>`;
-    overlay.classList.add('open');
-    return;
-  }
-
-  // no target needed — execute immediately
-  executeAbility(pid, blotId, abilityName, null);
-}
-
-function needsTarget(e) {
-  if (!e) return false;
-  // these all resolve automatically — no target picker needed
-  if (e.allTargets || e.allEnemies || e.allAllies || e.allActive) return false;
-  if (e.randomDamage) return false;   // picks a random enemy automatically
-  if (e.skipTurn) return false;
-  if (e.healSelf) return false;
-  if (e.healAll) return false;
-  if (e.statusClear) return false;
-  if (e.negate) return false;
-  if (e.selfDamage && !e.damage) return false;
-  return true;
-}
-
-// ─── COIN FLIP ────────────────────────────────────────────────────────────────
-function flipCoin(pid, blotId, abilityName) {
-  const result = Math.random() < 0.5 ? 'heads' : 'tails';
-  const resultEl = document.getElementById('coin-result');
-  resultEl.textContent = result === 'heads' ? '🪙 HEADS!' : '💀 TAILS!';
-
-  // wait then execute
-  setTimeout(() => {
-    closeModal();
-    executeAbility(pid, blotId, abilityName, null, result);
-  }, 900);
-}
-
-// ─── EXECUTE ABILITY ─────────────────────────────────────────────────────────
-function executeAbility(pid, blotId, abilityName, targetId, coinResult) {
-  closeModal();
-  const player = state.players[pid];
-  const enemy = state.players[1 - pid];
-  const blot = player.blots.find(b => b.id === blotId);
-  const ab = blot.abilities.find(a => a.name === abilityName);
-  const e = ab.effect || {};
-
-  blot.lastAbility = abilityName;
-
-  // ── Figure out target list ──
-  let targets = [];
-  if (e.allEnemies || e.allTargets) targets = enemy.blots.filter(b => b.active && !b.defeated);
-  else if (e.allAllies) targets = player.blots.filter(b => b.active && !b.defeated);
-  else if (e.allActive) targets = [...player.blots, ...enemy.blots].filter(b => b.active && !b.defeated);
-  else if (targetId) targets = [getBlotById(targetId)];
-
-  // ── Apply coin-flip branching ──
-  if (e.coinFlip) {
-    const heads = coinResult === 'heads';
-    if (heads) {
-      if (e.coinFlip.heads.damage && targets.length) dealDamage(targets[0] || getBlotById(targetId), e.coinFlip.heads.damage, abilityName);
-      if (e.coinFlip.heads.heal) doHeal(blot, e.coinFlip.heads.heal, abilityName);
-    } else {
-      if (e.coinFlip.tails.selfDamage) dealDamage(blot, e.coinFlip.tails.selfDamage, abilityName + ' (backfire)');
-      if (e.coinFlip.tails.damage && targets.length) dealDamage(targets[0], e.coinFlip.tails.damage, abilityName);
-      if (e.coinFlip.tails.skip) {
-        // skip handled externally, do nothing extra
-      }
-    }
-    checkDefeated();
-    renderGame();
-    checkWin();
-    return;
-  }
-
-  // ── Damage ──
-  if (e.damage > 0) {
-    targets.forEach(t => dealDamage(t, e.damage, abilityName));
-  }
-  // Random target damage — always picks from active enemies only, never allies
-  if (e.randomDamage > 0) {
-    const randPool = enemy.blots.filter(b => b.active && !b.defeated);
-    if (randPool.length) {
-      const picked = randPool[Math.floor(Math.random() * randPool.length)];
-      dealDamage(picked, e.randomDamage, abilityName + ' → ' + picked.name);
-    }
-  }
-  // Self damage
-  if (e.selfDamage > 0) dealDamage(blot, e.selfDamage, abilityName + ' (self)');
-  // Damage multiplier for last damage (absorb mechanic — skip for MVP)
-
-  // ── Heal ──
-  if (e.heal > 0) {
-    if (e.healSelf) doHeal(blot, e.heal, abilityName);
-    else if (e.healAll) player.blots.filter(b => b.active && !b.defeated).forEach(b => doHeal(b, e.heal, abilityName));
-    else if (targetId) doHeal(getBlotById(targetId), e.heal, abilityName);
-    else doHeal(blot, e.heal, abilityName);
-  }
-
-  // ── Status effects ──
-  if (e.statusInflict) {
-    targets.forEach(t => inflictStatus(t, e.statusInflict, abilityName));
-  }
-  if (e.statusClear === 'self') clearStatuses(blot, abilityName);
-  if (e.statusClear === 'allAllies') player.blots.filter(b => b.active && !b.defeated).forEach(b => clearStatuses(b, abilityName));
-
-  // ── Negate / Shield (just log it) ──
-  if (e.negate) addLog(`🛡️ ${blot.name} used ${abilityName} — will negate next attack!`, 'status');
-
-  // ── Skip own turn ──
-  if (e.skipTurn) {
-    doHeal(blot, e.heal || 0, abilityName);
-    addLog(`💤 ${blot.name} used ${abilityName} — skips next turn and heals!`, 'heal');
-  }
-
-  checkDefeated();
-  renderGame();
-  checkWin();
-}
-
-function dealDamage(target, amount, sourceName) {
-  if (!target || target.defeated) return;
-  target.hp = Math.max(0, target.hp - amount);
-  addLog(`⚔️ ${sourceName} → <b>${target.name}</b> takes <span class="log-dmg">${amount} damage</span> (${target.hp}/${target.maxHp} HP)`, 'damage');
-  if (target.hp === 0) {
-    target.defeated = true;
-    addLog(`💀 ${target.name} has been defeated!`, 'plain');
-    // move bench blot in
-    promoteFromBench(target);
-  }
-}
-
-function doHeal(target, amount, sourceName) {
-  if (!target || !amount) return;
-  const before = target.hp;
-  target.hp = Math.min(target.maxHp, target.hp + amount);
-  const actual = target.hp - before;
-  if (actual > 0) addLog(`💚 ${sourceName} → <b>${target.name}</b> heals <span class="log-heal">${actual} HP</span> (${target.hp}/${target.maxHp})`, 'heal');
-}
-
-function inflictStatus(target, type, sourceName) {
-  if (!target || target.defeated) return;
-  target.statuses = target.statuses.filter(s => s.type !== type);
-  target.statuses.push({ type, turns: 5 });
-  addLog(`${{burn:'🔥',poison:'☠️',stun:'💫'}[type]} ${sourceName} → <b>${target.name}</b> inflicted with <span class="log-status">${type.toUpperCase()}</span>`, 'status');
-}
-
-function clearStatuses(target, sourceName) {
-  if (!target) return;
-  target.statuses = [];
-  addLog(`✨ ${sourceName} cleared all statuses on <b>${target.name}</b>`, 'heal');
-}
-
-function removeStatus(pid, blotId, type) {
-  const blot = getBlotById(blotId);
-  if (blot) {
-    blot.statuses = blot.statuses.filter(s => s.type !== type);
-    renderGame();
-  }
-}
-
-function promoteFromBench(defeatedBlot) {
-  const pid = state.players[0].blots.find(b => b.id === defeatedBlot.id) ? 0 : 1;
-  const player = state.players[pid];
-  defeatedBlot.active = false;
-  const nextUp = player.blots.find(b => !b.active && !b.defeated);
-  if (nextUp) {
-    nextUp.active = true;
-    addLog(`🔄 ${nextUp.name} enters the field for ${player.name}!`, 'plain');
-  }
-}
-
-function checkDefeated() {
-  state.players.forEach(p => p.blots.forEach(b => { if (b.hp <= 0) b.defeated = true; }));
-}
-
-// ─── ITEM MODAL ───────────────────────────────────────────────────────────────
-function openItemModal(pid, itemIdx) {
-  const player = state.players[pid];
-  const item = player.items[itemIdx];
-  const e = item.effect || {};
-  const overlay = document.getElementById('modal-overlay');
-  const modal = document.getElementById('modal');
-
-  if (e.coinFlip) {
-    modal.innerHTML = `
-      <h3>${item.name}</h3>
-      <p class="modal-desc">${item.desc}</p>
-      <div class="coin-section">
-        <button class="coin-btn" onclick="flipItemCoin(${pid},${itemIdx})">🪙 Flip the Coin</button>
-        <div id="coin-result" class="coin-result"></div>
-      </div>
-      <button class="modal-cancel" onclick="closeModal()">Cancel</button>`;
-    overlay.classList.add('open');
-    return;
-  }
-
-  if (needsItemTarget(e)) {
-    const enemies = state.players[1 - pid].blots.filter(b => b.active && !b.defeated);
-    const allies = state.players[pid].blots.filter(b => b.active && !b.defeated);
-    let pool = e.targetEnemies ? enemies : allies;
-    if (e.targetAll) pool = [...enemies, ...allies];
-
-    modal.innerHTML = `
-      <h3>🎒 ${item.name}</h3>
-      <p class="modal-desc">${item.desc}</p>
-      <div class="modal-label">CHOOSE TARGET</div>
-      <div class="target-list">
-        ${pool.map(t => `<button class="target-btn" onclick="executeItem(${pid},${itemIdx},'${t.id}')">
-          <span class="target-btn-name">${t.name}</span>
-          <span class="target-btn-hp">${t.hp}/${t.maxHp} HP</span>
-        </button>`).join('')}
-      </div>
-      <button class="modal-cancel" onclick="closeModal()">Cancel</button>`;
-    overlay.classList.add('open');
-    return;
-  }
-
-  // no target needed
-  executeItem(pid, itemIdx, null);
-}
-
-function needsItemTarget(e) {
-  if (!e) return false;
-  return !!(e.damage || e.heal || e.statusInflict || e.statusClear);
-}
-
-function flipItemCoin(pid, itemIdx) {
-  const result = Math.random() < 0.5 ? 'heads' : 'tails';
-  document.getElementById('coin-result').textContent = result === 'heads' ? '🪙 HEADS!' : '💀 TAILS!';
-  setTimeout(() => { closeModal(); executeItem(pid, itemIdx, null, result); }, 900);
-}
-
-function executeItem(pid, itemIdx, targetId, coinResult) {
-  closeModal();
-  const player = state.players[pid];
-  const enemy = state.players[1 - pid];
-  const item = player.items[itemIdx];
-  const e = item.effect || {};
-  item.used = true;
-
-  let targets = [];
-  if (e.targetAll) targets = [...player.blots, ...enemy.blots].filter(b => b.active && !b.defeated);
-  else if (e.targetAllEnemies) targets = enemy.blots.filter(b => b.active && !b.defeated);
-  else if (e.targetAllAllies) targets = player.blots.filter(b => b.active && !b.defeated);
-  else if (targetId) targets = [getBlotById(targetId)];
-
-  if (e.coinFlip) {
-    const heads = coinResult === 'heads';
-    if (heads && e.coinFlip.heads.damage) targets.forEach(t => dealDamage(t, e.coinFlip.heads.damage, item.name));
-    if (heads && e.coinFlip.heads.heal) targets.forEach(t => doHeal(t, e.coinFlip.heads.heal, item.name));
-    if (!heads && e.coinFlip.tails.selfDamage) dealDamage(player.blots.find(b => b.active && !b.defeated), e.coinFlip.tails.selfDamage, item.name + ' (tails)');
-  } else {
-    if (e.damage) targets.forEach(t => dealDamage(t, e.damage, item.name));
-    if (e.damageAllEnemies) enemy.blots.filter(b => b.active && !b.defeated).forEach(t => dealDamage(t, e.damageAllEnemies, item.name));
-    if (e.heal) targets.forEach(t => doHeal(t, e.heal, item.name));
-    if (e.healAll) player.blots.filter(b => b.active && !b.defeated).forEach(b => doHeal(b, e.healAll, item.name));
-    if (e.statusInflict) targets.forEach(t => inflictStatus(t, e.statusInflict, item.name));
-    if (e.statusInflictAllEnemies) enemy.blots.filter(b => b.active && !b.defeated).forEach(t => inflictStatus(t, e.statusInflictAllEnemies, item.name));
-    if (e.statusClearBurn) player.blots.filter(b => b.active && !b.defeated).forEach(b => { b.statuses = b.statuses.filter(s => s.type !== 'burn'); });
-  }
-  addLog(`🎒 <b>${player.name}</b> used item: <span class="log-item">${item.name}</span>`, 'item');
-  checkDefeated();
-  renderGame();
-  checkWin();
-}
-
-// ─── END TURN / STATUS TICK ─────────────────────────────────────────────────
-function endTurn() {
-  const pid = state.turn;
-  state.players[pid].blots.forEach(blot => {
-    if (blot.defeated) return;
-    blot.statuses.forEach(s => {
-      if (s.type === 'burn' || s.type === 'poison') {
-        dealDamage(blot, 1, `${s.type} tick`);
-      }
     });
-    blot.statuses = blot.statuses.map(s => ({ ...s, turns: s.turns - 1 })).filter(s => s.turns > 0);
-    blot.lastAbility = null;
-  });
-
-  state.turn = 1 - state.turn;
-  if (state.turn === 0) {
-    state.turnNumber++;
-    // Every 6 full rounds, offer both players a new item card if they have room
-    if (state.turnNumber > 1 && (state.turnNumber - 1) % 6 === 0) {
-      checkDefeated();
-      renderGame();
-      checkWin();
-      offerItemDraw();
-      return;
-    }
+    players.forEach(p => p.effects.forEach(e => {
+      if (e.left===1) rows.push({ cls:'expired', emoji:'💨', html:`<strong>${esc(p.name)}</strong>'s ${e.type} wears off after this turn. Almost free!` });
+    }));
+    if (!rows.length) return;
+    document.getElementById('aHead').innerHTML = `✨ Turn ${turn} — Heads Up! ✨`;
+    document.getElementById('aBody').innerHTML = rows.map(r=>`<div class="alert-row ${r.cls}"><span class="alert-emoji">${r.emoji}</span><span>${r.html}</span></div>`).join('');
+    document.getElementById('overlay').classList.remove('hidden');
   }
-  checkDefeated();
-  renderGame();
-  checkWin();
-}
+  function closeAlert() { document.getElementById('overlay').classList.add('hidden'); }
 
-// ─── ITEM DRAW OFFER ─────────────────────────────────────────────────────────
-function offerItemDraw() {
-  const eligible = state.players
-    .map((p, i) => ({ p, i }))
-    .filter(({ p }) => p.items.filter(x => !x.used).length < 3);
+  function render() {
+    document.getElementById('turnNum').textContent = turn;
+    const doneCount = players.filter(p=>p.done).length;
+    document.getElementById('roundNum').textContent = Math.min(doneCount+1, players.length);
 
-  if (!eligible.length) {
-    addLog('🎒 Item draw round — both players already have full hands!', 'item');
-    return;
+    const isItem = turn % 6 === 0;
+    document.getElementById('itemPill').classList.toggle('hidden', !isItem);
+    if (!isItem) {
+      const diff = 6 - (turn % 6);
+      document.getElementById('nextItemTxt').innerHTML = `🎁 Item cards in ${diff} turn${diff!==1?'s':''}`;
+    } else { document.getElementById('nextItemTxt').textContent = ''; }
+
+    const grid = document.getElementById('players-grid');
+    grid.innerHTML = '';
+    players.forEach((p,i) => {
+      const card = document.createElement('div');
+      card.className = 'p-card' + (p.done?' done-card':'');
+      const chips = p.effects.map(e =>
+        `<span class="fx-chip ${e.type}" onclick="removeEffect(${i},'${e.type}')" title="Click to remove">
+          ${e.type==='burn'?'🔥':'☠️'} ${e.type} <span class="chip-t">${e.left}</span>
+        </span>`
+      ).join('') || `<span class="no-fx">no effects (clean as a fresh doodle 🎨)</span>`;
+
+      card.innerHTML = `
+        <div class="p-name-row">
+          <div class="p-name">${esc(p.name)}</div>
+          <span class="p-badge ${p.done?'done2':'waiting'}">${p.done?'✓ Done!':'⏳ waiting'}</span>
+        </div>
+        <div class="effects-row">${chips}</div>
+        <div class="fx-btns">
+          <button class="btn-fx f-burn"   onclick="addEffect(${i},'burn')"   ${p.done?'disabled':''}>🔥 Burn</button>
+          <button class="btn-fx f-poison" onclick="addEffect(${i},'poison')" ${p.done?'disabled':''}>☠️ Poison</button>
+        </div>
+        <button class="btn-end ${p.done?'dn':'act'}" onclick="endRound(${i})" ${p.done?'disabled':''}>
+          ${p.done ? '✅ Round done! (go touch grass)' : '🎨 End My Round'}
+        </button>
+      `;
+      grid.appendChild(card);
+    });
   }
-  processNextItemDraw(eligible, 0);
-}
 
-function processNextItemDraw(eligible, idx) {
-  if (idx >= eligible.length) return;
-  const { p, i: pid } = eligible[idx];
-  const unusedCount = p.items.filter(x => !x.used).length;
-
-  if (unusedCount >= 3) {
-    addLog(`🎒 ${p.name} already has a full hand — skipping.`, 'item');
-    processNextItemDraw(eligible, idx + 1);
-    return;
+  function log(type, text) {
+    const el = document.createElement('div');
+    el.className = `log-row log-${type}`;
+    el.innerHTML = `<span class="log-t">T${turn}</span><span>${text}</span>`;
+    const l = document.getElementById('log-list');
+    l.insertBefore(el, l.firstChild);
+    while (l.children.length > 60) l.removeChild(l.lastChild);
   }
 
-  const allItems = window.ITEM_DATA;
-  const overlay = document.getElementById('modal-overlay');
-  const modal = document.getElementById('modal');
-
-  let itemBtns = '';
-  allItems.forEach((item, ii) => {
-    const typeClass = ITEM_TYPE_COLORS[item.type] || 'tag-chaos';
-    itemBtns += `<button class="target-btn" style="flex-direction:column;align-items:flex-start;gap:4px"
-      onclick="giveItemCard(${pid},${ii},${idx})">
-      <div style="display:flex;align-items:center;gap:8px;width:100%">
-        <span class="target-btn-name">${item.name}</span>
-        <span class="item-tag ${typeClass}">${item.type}</span>
-      </div>
-      <span style="font-size:11px;color:var(--muted)">${item.desc}</span>
-    </button>`;
-  });
-
-  modal.innerHTML = `
-    <h3>🎒 Item Draw!</h3>
-    <p class="modal-desc" style="margin-bottom:14px">
-      <b>${p.name}</b>, pick a new item card!<br>
-      <span style="color:var(--muted);font-size:12px">${unusedCount}/3 cards currently held</span>
-    </p>
-    <div class="modal-label">CHOOSE AN ITEM</div>
-    <div class="target-list" style="max-height:340px;overflow-y:auto">${itemBtns}</div>`;
-  overlay.classList.add('open');
-}
-
-function giveItemCard(pid, itemIdx, queueIdx) {
-  closeModal();
-  const player = state.players[pid];
-  const item = window.ITEM_DATA[itemIdx];
-  const activeCount = player.items.filter(x => !x.used).length;
-  if (activeCount < 3) {
-    player.items.push({ ...item, used: false });
-    addLog(`🎒 <b>${player.name}</b> drew a new item: <span class="log-item">${item.name}</span>`, 'item');
-  }
-  renderGame();
-  // Check remaining eligible players
-  const stillEligible = state.players
-    .map((p, i) => ({ p, i }))
-    .filter(({ p }) => p.items.filter(x => !x.used).length < 3);
-  processNextItemDraw(stillEligible, queueIdx + 1);
-}
-
-// ─── WIN CHECK ───────────────────────────────────────────────────────────────
-function checkWin() {
-  state.players.forEach((p, pid) => {
-    if (p.blots.every(b => b.defeated)) {
-      const winner = state.players[1 - pid];
-      document.getElementById('win-text').textContent = `🏆 ${winner.name} WINS!`;
-      document.getElementById('win-sub').textContent = `All of ${p.name}'s Doodle Blots have been defeated.`;
-      document.getElementById('win-overlay').classList.add('open');
-    }
-  });
-}
-
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-function getBlotById(id) {
-  for (const p of state.players) {
-    const b = p.blots.find(b => b.id === id);
-    if (b) return b;
-  }
-  return null;
-}
-
-function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('open');
-}
-
-function addLog(msg, type) {
-  state.log.unshift({ msg, type });
-  if (state.log.length > 20) state.log.pop();
-}
-
-function renderLog() {
-  const bar = document.getElementById('log-bar');
-  bar.innerHTML = state.log.slice(0, 8).map((entry, i) =>
-    `<span class="log-entry" style="opacity:${1 - i * 0.1}">${entry.msg}</span>`
-  ).join('<span style="color:var(--border);flex-shrink:0">|</span>');
-}
-
-// End Turn button in header
-document.addEventListener('DOMContentLoaded', () => {
-  const header = document.querySelector('.game-header');
-  if (header) {
-    const btn = document.createElement('button');
-    btn.textContent = 'End Turn ⏭';
-    btn.style.cssText = 'background:#8b7cf822;border:2px solid #8b7cf8;color:#8b7cf8;border-radius:8px;padding:5px 14px;font-family:Nunito,sans-serif;font-size:13px;font-weight:900;cursor:pointer';
-    btn.onclick = endTurn;
-    header.insertBefore(btn, header.querySelector('.reset-btn'));
-  }
-});
+  addRow();
 </script>
 </body>
 </html>
